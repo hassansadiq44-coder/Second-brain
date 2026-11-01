@@ -1,0 +1,10 @@
+{
+  "appId": "com.secondbrain.pro",
+  "appName": "عقلي الثاني",
+  "webDir": "www",
+  "android": { "allowMixedContent": false },
+  "server": { "androidScheme": "https" },
+  "plugins": {
+    "LocalNotifications": { "smallIcon": "ic_stat_icon", "iconColor": "#2CC8AA" }
+  }
+}

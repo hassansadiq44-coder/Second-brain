@@ -1,0 +1,42 @@
+const {classifyCommand,splitCommands}=require('./parser_core.js');
+const now=new Date(2026,10,1,15,0,0); // Sun 1 Nov 2026 15:00
+let fail=0;
+function T(txt,exp){const r=classifyCommand(txt,now);const got={section:r.section,...r.fields};
+ const bad=[];for(const [k,v] of Object.entries(exp)){const g=k==='query'?r.query?.kind:got[k];if(String(g)!==String(v))bad.push(`${k}: expected ${v} got ${g}`);}
+ if(bad.length){fail++;console.log('FAIL',txt,'\n   ',bad.join(' | '),'\n   warnings:',r.warnings);}else console.log('ok  ',txt);}
+T('ذكرني باجر الساعة وحدة ونص بالليل أروح للدكتور',{section:'todo',due:'2026-11-02T01:30'});
+T('ذكرني الساعة الواحدة ظهرا اتصل بأحمد',{section:'todo',due:'2026-11-02T13:00'});
+T('ذكرني الساعة 12 بالليل اشرب الدوا',{section:'todo',due:'2026-11-02T00:00'});
+T('ذكرني باجر الساعة الحادية عشرة صباحا اراجع المدرسة',{section:'todo',due:'2026-11-02T11:00'});
+T('ذكرني بعد ساعة اطفي المولدة',{section:'todo',due:'2026-11-01T16:00'});
+T('ذكرني بعد نص ساعة اطلع الخبز',{section:'todo',due:'2026-11-01T15:30'});
+T('ذكرني بعد ساعتين اتصل بالوكيل',{section:'todo',due:'2026-11-01T17:00'});
+T('ذكرني بعد 20 دقيقة',{section:'todo',due:'2026-11-01T15:20'});
+T('ذكرني الخميس الساعة 5 العصر اروح للمعرض',{section:'todo',due:'2026-11-05T17:00'});
+T('ذكرني باجر الساعة 9 الصبح اروح صلاة المغرب مع ابوي',{section:'todo',due:'2026-11-02T09:00'});
+T('ذكرني اشتري غداء الساعة 2 ظهرا',{section:'todo',due:'2026-11-02T14:00',title:'اشتري غداء'});
+T('ذكرني كل خميس الساعة 6 مساء اسقي الزرع',{section:'todo',repeat:'أسبوعي'});
+T('ذكرني الساعة 4 ونص بعد الظهر',{section:'todo',due:'2026-11-01T16:30'});
+T('ذكرني الساعة 6 الا ربع مساء',{section:'todo',due:'2026-11-01T17:45'});
+T('صرفت 15 ألف على غداء',{section:'expenses',amount:15000,category:'طعام',date:'2026-11-01'});
+T('صرفت خمسة عشر الف على بنزين',{section:'expenses',amount:15000,category:'مواصلات'});
+T('دفعت 120,000 للمولدة',{section:'expenses',amount:120000,category:'فواتير وخدمات'});
+T('امس صرفت 25 الف على دواء',{section:'expenses',amount:25000,date:'2026-10-31',category:'صحة'});
+T('صرفت ثلاثة وعشرين الف على خضار',{section:'expenses',amount:23000});
+T('دفعت الفين وخمسمية دينار اجرة تاكسي',{section:'expenses',amount:2500});
+T('غيرت دهن الكرايسلر ودفعت 20 ألف عداد 120,000',{section:'maintenance',mileage:120000,cost:20000,type:'دهن وفلتر'});
+T('غيرت دهن الكرايسلر عداد 120000 وكلفني 35 الف',{section:'maintenance',mileage:120000,cost:35000});
+T('بدلت تايرات السيارة عداد 85000 الصيانة القادمة 95000',{section:'maintenance',nextMileage:95000,type:'تبديل تايرات'});
+T('كم صرفت هالشهر؟',{section:'query',query:'expenses'});
+T('شنو مواعيدي باجر؟',{section:'query',query:'agenda'});
+T('بيت شعر: لا تحسبن المجد تمرا انت آكله',{section:'thoughts',kind:'بيت شعر'});
+T('حلاقة شعر باجر الساعة 4 العصر',{section:'todo'});
+T('شعرت بالتعب اليوم',{section:'quickNotes'});
+T('مشروع جديد تطبيق مواعيد للعيادات',{section:'plans'});
+T('اريد ازور اسطنبول',{section:'destinations'});
+T('وكيل علي الى دبي 4 ركاب بتاريخ 2026-11-20',{section:'b2b',pax:4,date:'2026-11-20'});
+T('اجتماع بعد باجر الساعة 10 صباحا',{section:'todo',due:'2026-11-03T10:00'});
+T('احجز كتابة الدرس',{section:'quickNotes'});
+T('ذكرني الساعة 9 اروح المدرسة',{section:'todo'}); 
+console.log(JSON.stringify(splitCommands('ذكرني باجر الساعة 5 اروح السوق وبعدين صرفت 5 الاف على قهوة')));
+console.log(fail?'\n'+fail+' FAILED':'\nALL PASSED');process.exit(fail?1:0);
