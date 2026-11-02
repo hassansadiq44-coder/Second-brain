@@ -1,0 +1,66 @@
+name: Build Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - uses: android-actions/setup-android@v3
+      - run: npm install
+      - run: npm run test:parser
+      - name: Inject Supabase defaults (optional repo variables)
+        run: |
+          if [ -n "${{ vars.SUPABASE_URL }}" ]; then
+            sed -i 's#url: "",#url: "${{ vars.SUPABASE_URL }}",#; s#key: "",#key: "${{ vars.SUPABASE_PUBLISHABLE_KEY }}",#; s#siteUrl: ""#siteUrl: "${{ vars.SITE_URL }}"#' src/config.js
+          fi
+      - run: pip install pillow
+      - run: npm run android:init
+      - name: Build (signed if keystore secrets exist, otherwise debug)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          cd android
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > app/release.jks
+            ./gradlew assembleRelease \
+              -Pandroid.injected.signing.store.file=$PWD/app/release.jks \
+              -Pandroid.injected.signing.store.password="$KS_PASS" \
+              -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+              -Pandroid.injected.signing.key.password="$KS_PASS"
+          else
+            ./gradlew assembleDebug
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: second-brain-apk
+          path: android/app/build/outputs/apk/**/*.apk
+  pages:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions: { pages: write, id-token: write, contents: read }
+    environment: { name: github-pages, url: "${{ steps.deploy.outputs.page_url }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm install
+      - name: Inject Supabase defaults
+        run: |
+          if [ -n "${{ vars.SUPABASE_URL }}" ]; then
+            sed -i 's#url: "",#url: "${{ vars.SUPABASE_URL }}",#; s#key: "",#key: "${{ vars.SUPABASE_PUBLISHABLE_KEY }}",#; s#siteUrl: ""#siteUrl: "${{ vars.SITE_URL }}"#' src/config.js
+          fi
+      - run: npm run prepare-web
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: www }
+      - id: deploy
+        uses: actions/deploy-pages@v4
